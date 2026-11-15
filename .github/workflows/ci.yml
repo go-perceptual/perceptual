@@ -1,0 +1,132 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # A workflow that fails to PARSE reports nothing at all -- no red cross, no
+  # run, just silence that reads exactly like success. actionlint is the only
+  # thing that catches it, so it is the first lane here.
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+  gofmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          # ⛔ This MUST be at least the go directive in go.mod. setup-go sets
+          # GOTOOLCHAIN=local, so a pin below the directive does not quietly
+          # download a newer toolchain -- it fails with "go.mod requires go >=
+          # ...", on a commit that touched no Go code.
+          go-version: '1.27.4'
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files are not gofmt-clean:"; echo "$unformatted"
+            exit 1
+          fi
+      - name: go.mod is tidy
+        run: go mod tidy -diff
+
+  # Nothing here is platform-specific, so nothing gets a pass for being one:
+  # the same tests and the same coverage gate on all three. The media
+  # fixtures are committed, so no runner needs ffmpeg.
+  test:
+    name: test ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.4'
+      - run: CGO_ENABLED=0 go vet ./...
+        shell: bash
+      - run: CGO_ENABLED=0 go test -count=1 -coverprofile=cover.out ./...
+        shell: bash
+      - run: CGO_ENABLED=1 go test -race -count=1 ./...
+        shell: bash
+      # ⛔ 82%, and the number is argued rather than chosen. Measured 84.5% on
+      # 2026-11-15, so there are two and a half points of slack for toolchain
+      # drift and no more.
+      #
+      # What is NOT covered, named so the gap is a known one:
+      #
+      #   * `main`, 0% by nature -- it calls os.Exit, and RootCmd is exported
+      #     precisely so everything else is testable without it.
+      #   * the error returns of audioFeatures, pcmMono and videoHash that
+      #     need a MALFORMED container: a track whose sample rate changes
+      #     mid-stream, a PCM chunk that is not a whole number of frames, a
+      #     track declaring a timescale of zero. Reaching those means
+      #     hand-building broken containers, which is worth doing and is not
+      #     worth faking with a mock that proves only that the mock works.
+      #
+      # ⚠ A floor only works if it RATCHETS. If this number ever needs
+      # lowering, that is the finding, not the fix.
+      - name: coverage floor
+        shell: bash
+        run: |
+          go tool cover -func=cover.out | tee cov.txt
+          total=$(awk '/^total:/ {print substr($3, 1, length($3)-1)}' cov.txt)
+          echo "total coverage: ${total}%"
+          if awk -v t="$total" 'BEGIN { exit !(t < 82.0) }'; then
+            echo "::error::coverage ${total}% is below the 82% floor"; exit 1
+          fi
+
+  # ⛔ 386 and s390x are here on purpose, not for breadth: a media decoder is
+  # where a 32-bit size overflow and a big-endian sample read actually bite.
+  # All ten were verified locally before this lane was written.
+  cross:
+    name: cross ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: linux, goarch: '386' }
+          - { goos: linux, goarch: riscv64 }
+          - { goos: linux, goarch: loong64 }
+          - { goos: linux, goarch: s390x }
+          - { goos: windows, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: freebsd, goarch: amd64 }
+          - { goos: js, goarch: wasm }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.4'
+      - run: CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build ./...
+      - run: CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go vet ./...
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.4'
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: govulncheck ./...

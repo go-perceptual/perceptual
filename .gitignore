@@ -1,0 +1,7 @@
+# The built binary: this module's name is also the command's name, so a local
+# `go build` drops it right here.
+/perceptual
+
+# Coverage profiles, written by the test lane.
+cover.out
+cov.txt
