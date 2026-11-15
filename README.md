@@ -184,21 +184,29 @@ MP4, Matroska/WebM, MPEG-TS, Ogg, WAV, AVI, native FLAC, ADTS and MPEG audio;
 H.264 and H.265 video; FLAC, MP3, Opus, AAC-LC and HE-AAC audio. Images go
 through Go's own decoders: JPEG, PNG and GIF.
 
+### Decoding lives in go-perceptual/media
+
+Classification, decoding, downmixing, resampling and frame wrapping are
+[go-perceptual/media](https://github.com/go-perceptual/media)'s. They used to
+be here, copied into `dedupe` as well, and every one of them encodes a
+decision that goes wrong *silently* if two copies drift apart — a downmix that
+takes one channel compares a one-channel recording against silence, PCM read
+at the wrong sample width is noise that still hashes, a 10-bit frame
+truncated to 8 gives one film two fingerprints. None of those crash. They
+produce two tools that disagree about whether two files are the same thing.
+
+What stays here is this tool's own business: which feature, at which rate,
+which threshold, and what to print.
+
 ### Linear PCM
 
 A WAV holds samples that already *are* PCM, so `go-avkit/decode` refuses
-them — rightly, since there is nothing to decode. This tool therefore reads
-PCM tracks straight through, which is the one case where "add the missing
-decoder" means adding no decoder at all.
-
-The sample width is not carried by the track configuration, so it is derived
-from a chunk's byte length divided by its frame count — valid only while a
-sample's duration counts frames, which holds while the track's timescale is
-its sample rate. That equality is asserted at run time and refused otherwise:
-PCM read at the wrong width is noise that still hashes, and a confident wrong
-answer is worse than an error. A test checks the equality at four sample
-rates, so a change upstream is reported rather than left to silently break
-every WAV.
+them — rightly, since there is nothing to decode — which leaves WAV, the
+simplest format in its list, unreachable through the decoder API. `media`
+carries the passthrough, including the sample width that the track
+configuration does not state and that has to be derived and then asserted.
+See its README for the measurements; reported upstream with an implementation
+offered.
 
 ## Where the test fixtures come from
 

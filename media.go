@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"image"
@@ -10,59 +9,41 @@ import (
 	_ "image/png"
 	"os"
 
-	"github.com/go-avkit/avkit/container"
+	"github.com/go-perceptual/media"
 )
 
 // Kind is what a file turned out to hold.
-type Kind string
+//
+// It is an alias for media.Kind rather than a type of its own: the JSON this
+// tool prints carries these strings, and a second enumeration that had to be
+// mapped onto the first is how the two drift apart.
+type Kind = media.Kind
 
 const (
-	KindImage Kind = "image"
-	KindAudio Kind = "audio"
-	KindVideo Kind = "video"
+	KindImage = media.KindImage
+	KindAudio = media.KindAudio
+	KindVideo = media.KindVideo
 )
 
 // ErrUnknownMedia is returned for a file that is none of the three.
 var ErrUnknownMedia = errors.New("not an image, and no audio or video track")
 
 // identify says what a file holds, by READING it rather than trusting its
-// name.
+// name. See media.Classify for why, and for how little of the file it needs.
 //
-// ⛔ An extension is a claim by whoever named the file. A `.jpg` holding a
-// PNG, or a `.mp4` holding only audio, are ordinary things in a download
-// folder — and a tool that believes the name reports a confident wrong
-// answer. The image decoders are asked first because they are cheap and
-// definitive; then the container is sniffed.
+// The only thing added here is the error for KindOther: media reports "not
+// media" as a fact rather than a failure, because most of a directory tree is
+// not media — but a CLI handed one file by name has been asked a question
+// about THAT file, and "it is not media" is the answer, not a silence.
 func identify(path string) (Kind, error) {
-	data, err := os.ReadFile(path)
+	kind, err := media.Classify(path)
 	if err != nil {
-		return "", err
+		return media.KindOther, err
 	}
-
-	if _, _, err := image.DecodeConfig(bytes.NewReader(data)); err == nil {
-		return KindImage, nil
+	if kind == media.KindOther {
+		return media.KindOther, fmt.Errorf("%s: %w", path, ErrUnknownMedia)
 	}
-
-	r, err := container.NewReader(data)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", path, ErrUnknownMedia)
-	}
-	hasVideo, hasAudio := false, false
-	for _, tr := range r.File().Tracks {
-		switch tr.Kind {
-		case container.Video:
-			hasVideo = true
-		case container.Audio:
-			hasAudio = true
-		}
-	}
-	switch {
-	case hasVideo:
-		return KindVideo, nil
-	case hasAudio:
-		return KindAudio, nil
-	}
-	return "", fmt.Errorf("%s: %w", path, ErrUnknownMedia)
+	return kind, nil
 }
 
 func loadImage(path string) (image.Image, error) {

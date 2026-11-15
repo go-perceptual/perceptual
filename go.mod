@@ -3,10 +3,8 @@ module github.com/go-perceptual/perceptual
 go 1.27.4
 
 require (
-	github.com/go-avkit/avkit v0.19.1
-	github.com/go-avkit/decode v0.7.0
-	github.com/go-dsp/signal v0.2.0
 	github.com/go-perceptual/chroma v0.2.0
+	github.com/go-perceptual/media v0.1.0
 	github.com/go-perceptual/pdq v0.2.0
 	github.com/go-perceptual/tmk v0.1.0
 	github.com/spf13/cobra v1.10.2
@@ -20,8 +18,11 @@ require (
 	github.com/asticode/go-astits v1.17.0 // indirect
 	github.com/at-wat/ebml-go v0.19.4 // indirect
 	github.com/gen2brain/h265 v0.2.4 // indirect
+	github.com/go-avkit/avkit v0.19.1 // indirect
 	github.com/go-avkit/bitstream v0.4.0 // indirect
+	github.com/go-avkit/decode v0.7.0 // indirect
 	github.com/go-avkit/h264 v0.9.0 // indirect
+	github.com/go-dsp/signal v0.2.0 // indirect
 	github.com/go-fft/fft v0.35.1 // indirect
 	github.com/go-numerics/special v0.4.0 // indirect
 	github.com/go-simd/floats v0.22.0 // indirect
