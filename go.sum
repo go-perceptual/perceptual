@@ -27,6 +27,8 @@ github.com/go-numerics/special v0.4.0 h1:nTAwJv1T79Aw1cFb3SO6c3HUd1/xX0ORHjKf2wb
 github.com/go-numerics/special v0.4.0/go.mod h1:A4gX/e2znfRvkjSDMmMaFomZVeD9rDMeMlAILQLtoIA=
 github.com/go-perceptual/chroma v0.2.0 h1:fibb09E8FxsUQULVNK6EgfhoLi76EUM5wWygqL66AeY=
 github.com/go-perceptual/chroma v0.2.0/go.mod h1:4X6WPhi73+/Dvq4Z4SclU+mDXyJz4FXKNAgI+jop8ms=
+github.com/go-perceptual/media v0.1.0 h1:ldiXzUizzNWx3xi96HH8vgSHtxK1yC+SLQKRS0ehDNE=
+github.com/go-perceptual/media v0.1.0/go.mod h1:22AVEss81gOyYPQqgsiDBOGaPouYjNyMtoO4NOBjQE8=
 github.com/go-perceptual/pdq v0.2.0 h1:eTbZQLAsbBdbOwpIaVk5ALFVp47Q0vg7lKHQ8NGVPBo=
 github.com/go-perceptual/pdq v0.2.0/go.mod h1:C4cPA6roOUXpSHRGNOnaNlhG8LHQcvWzTJ2wkhrEeuo=
 github.com/go-perceptual/tmk v0.1.0 h1:VEfep9pAwDJjhApRh9pJjr2aJABF0CZzsoP0hz94ORI=
